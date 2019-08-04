@@ -1,0 +1,579 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage{enumerate}
+\usepackage{mathtools}
+\usepackage{commath}
+\usepackage[margin=0.5in]{geometry}
+\usepackage[colorlinks=true,linkcolor=blue,urlcolor=black,bookmarksopen=true]{hyperref}
+\usepackage{bookmark}
+
+\renewcommand{\pmb}[1]{\boldsymbol{#1}}
+\newcommand{\grad}[1]{\nabla_{#1}\;}
+\newcommand{\gradn}[2]{\nabla_{#1}^{#2}\;}
+\newcommand{\tr}{\text{tr}\;}
+\newcommand{\newpara}{\newline\newline}
+\newcommand{\ddfrac}[2]{\frac{\displaystyle #1}{\displaystyle #2}}
+\DeclareMathOperator{\Diag}{Diag}
+\DeclareMathOperator{\sign}{sign}
+
+\title{CS229 Machine Learning Notes and Formulae}
+\author{Chang He}
+\date{July 2019}
+
+\setcounter{secnumdepth}{4}
+\setcounter{tocdepth}{4}
+
+\begin{document}
+\allowdisplaybreaks 
+\maketitle
+
+\tableofcontents
+\newpage
+
+
+\section{Supervised Learning and Linear Models}
+\subsection{Linear Models}
+\subsubsection{Linear Regression}
+Given data set $X$ with $n$ data points and $d$ features, with the associated targets $y$, minimize the loss function: $$\frac{1}{2}\sum_{i=1}^n (\pmb{\theta}^T X_{(i)} + b - y_{(i)})^2$$
+
+By changing the definition of $X$ and $\pmb\theta$ to include the intercept term $b$, with the 0th feature of $X$ being $1$ and 0th term of $\pmb\theta$ being $b$, we have:
+$$\frac{1}{2}\sum_{i=1}^n (\pmb{\theta}^T X_{(i)} - y_{(i)})^2$$
+
+Vectorizing the loss function, we have the objective function:
+$$\min_{\pmb\theta} l(\pmb\theta) = \min_{\pmb\theta} \frac{1}{2} (X\pmb\theta - \pmb y)^T (X\pmb\theta - \pmb y)$$
+
+\paragraph{Ordinary Least Square} 
+
+To find the potential minimum of this function, we find its gradient first:
+\begin{align*}
+    \grad{\pmb\theta} l(\pmb\theta) &= \grad{\pmb\theta} \frac{1}{2} (X\pmb\theta - \pmb y)^T (X\pmb\theta - \pmb y) \\
+    &= \grad{\pmb\theta} \frac{1}{2} (\pmb{\theta}^T X^T X \pmb{\theta} - \pmb{\theta}^T X^T \pmb{y} - \pmb{y}^T X \pmb{\theta} + \pmb{y}^T \pmb{y}) \\
+    &= \frac{1}{2} \grad{\pmb\theta} \tr (\pmb{\theta}^T X^T X \pmb{\theta} - \pmb{\theta}^T X^T \pmb{y} - \pmb{y}^T X \pmb{\theta} + \pmb{y}^T \pmb{y}) & \text{$\tr x = x$ if $x\in \mathcal{R}$} \\ 
+    &= \frac{1}{2} \grad{\pmb\theta} (\tr\pmb{\theta}^T X^T X \pmb{\theta} - \tr\pmb{\theta}^T X^T \pmb{y} - \tr\pmb{y}^T X \pmb{\theta}) & \text{remove the constant} \\
+    &= \frac{1}{2} \grad{\pmb\theta} (\tr\pmb{\theta}^T X^T X \pmb{\theta} - \tr\pmb{y}^T X \pmb{\theta} - \tr\pmb{y}^T X \pmb{\theta}) & \tr A^T = \tr A \\
+    &= \frac{1}{2} (\grad{\pmb\theta^T} \tr \pmb{\theta}^T X^T X \pmb{\theta})^T - \grad{\pmb{\theta}} \tr\pmb{y}^T X \pmb{\theta} & \grad{A} f(A) = (\grad{A^T} f(A))^T \\ 
+    &= \frac{1}{2}(\pmb{\theta}^T X^T X + \pmb{\theta}^T X^T X) - \pmb{y}^T X & \grad{A} A B A^T C = CAB + C^T A B^T \\ 
+    & & \text{with $A = \pmb\theta^T$, $B = X^T X$, $C = I$} \\ 
+    &= (\pmb{\theta}^T X^T - y^T) X \\ 
+    &= (X \pmb\theta - y)^T X \\
+    &= X^T (X \pmb\theta - y)
+\end{align*}
+
+To obtain the critical point, set the gradient to $0$ and solve the linear equation:
+$$X^T X \pmb{\theta} = X^T \pmb{y}$$
+
+The result is denoted as $\theta = (X^T X)^{-1} X^T \pmb{y}$.
+
+\paragraph{Probabilistic interpretation of Linear Model}
+Given data set $X$ with $n$ data points and $d$ features, with the associated targets $\pmb{y}$, assuming that the data set is modeled by parameter $\pmb{\theta}$ and the residual $(\pmb{y}_{(i)} - \pmb{\theta}^T X_{(i)})$ follows a Gaussian distribution, we have:
+\begin{align*}
+    \pmb{y}_{(i)} &= \pmb{\theta}^T X_{(i)} + \pmb\epsilon_{(i)} & \pmb\epsilon_{(i)} \sim \mathcal{N}(0, \sigma^2) \\ 
+    P(\pmb\epsilon_{(i)}) &= \frac{1}{\sqrt{2\pi}\sigma} \exp{\left(-\frac{(\pmb\epsilon_{(i)})^2}{2\sigma^2}\right)} \\ 
+    P(\pmb{y}_{(i)} | X_{(i)} ; \pmb{\theta}) &= \mathcal{N}(\pmb{y}_{(i)} - \pmb{\theta}^T X_{(i)}, \sigma^2) \\
+    &= \frac{1}{\sqrt{2\pi\sigma^2}} \exp{\left(-\frac{(\pmb{y}_{(i)} - \pmb{\theta}^T X_{(i)})^2}{2\sigma^2}\right)} 
+\end{align*}
+
+Assuming $\pmb\epsilon_{(i)}$ is Independently and Identically Distributed (IDD), we have:
+\begin{align*}
+    P(\pmb{y}|X;\pmb{\theta}) &= \prod_{i=1}^n P(\pmb{y}_{(i)} | X_{(i)} ; \pmb{\theta}) \\ 
+    &= \prod_{i=1}^n \frac{1}{\sqrt{2\pi\sigma^2}} \exp{\left(-\frac{(\pmb{y}_{(i)} - \pmb{\theta}^T X_{(i)})^2}{2\sigma^2}\right)}
+\end{align*}
+
+Let find the maximum likelihood estimate of $\pmb{\theta}$ by maximizing $P(\pmb{y}|X;\pmb{\theta})$:
+\begin{align*}
+    \max_{\pmb\theta} P(\pmb{y}|X;\pmb{\theta}) &= \max_{\pmb{\theta}} \ln{ P(\pmb{y}|X;\pmb{\theta}) } & \text{since $\ln$ is monotonously increasing } \\ 
+    &= \max_{\pmb{\theta}} \sum_{i=1}^n \ln {\left( \frac{1}{\sqrt{2\pi\sigma^2}} \exp{\left(-\frac{(\pmb{y}_{(i)} - \pmb{\theta}^T X_{(i)})^2}{2\sigma^2}\right)} \right)} \\ 
+    &= \max_{\pmb{\theta}} \sum_{i=1}^n \left( -\frac{1}{2} \ln{(2\pi\sigma^2)} - \frac{(\pmb{y}_{(i)} - \pmb{\theta}^T X_{(i)})^2}{2\sigma^2} \right) \\ 
+    &= \min_{\pmb{\theta}} \sum_{i=1}^n \left( \frac{(\pmb{y}_{(i)} - \pmb{\theta}^T X_{(i)})^2}{2\sigma^2} \right) & \text{remove the constant term} \\ 
+    &= \min_{\pmb{\theta}} \frac{1}{2} \sum_{i=1}^n (\pmb{y}_{(i)} - \pmb{\theta}^T X_{(i)})^2 \\ 
+    &= \min_{\pmb\theta} \frac{1}{2} (X\pmb\theta - \pmb y)^T (X\pmb\theta - \pmb y) \\ 
+    &= \min_{\pmb\theta} l(\pmb{\theta})
+\end{align*} 
+
+\subsubsection{Linear Models for Classification}
+\paragraph{Using Linear Regression for Classification}
+Since the component range of hypothesis function $h_{\pmb{\theta}}(X) = X\pmb{\theta}$ lies far outside of the relevant range for classification $[0,1]$, linear regression is extremely sensitive to data points with a large norm, so it is generally not recommended to use linear regression for classification.
+
+\paragraph{Logistic Regression}
+The hypothesis for logistic regression is:
+$$h_{\pmb{\theta}}(X) = S(\pmb\theta^T X) = \frac{1}{1+\exp{(-X\pmb\theta)}}$$, where function $S$ is called sigmoid or logistic function. \newline
+
+Each component of the hypothesis, $h_{\pmb{\theta}}(X_{(i)})$, represents the probability of the associated target $\pmb{y}_{(i)}$ equal to $1$, that is:
+\begin{align*}
+    h_{\pmb{\theta}}(X_{(i)}) &= P(\pmb{y}_{(i)} = 1 | X_{(i)} ; \pmb\theta) \\ 
+    1 - h_{\pmb{\theta}}(X_{(i)}) &= P(\pmb{y}_{(i)} = 0 | X_{(i)} ; \pmb\theta) \\ 
+    \intertext{Since $y \in \{ 0, 1 \}$, } \\ 
+    P(\pmb{y}_{(i)} | X_{(i)} ; \pmb\theta) &= h_{\pmb{\theta}} (X_{(i)})^{y} (1 - h_{\pmb{\theta}}(X_{(i)}))^{(1-y)}
+\end{align*}
+
+Using MLE estimation, with IDD assumption, we get:
+\begin{align*}
+    &\quad \max_{\pmb\theta} \ln{P(\pmb{y} | X ; \pmb{\theta})} \\
+    &= \max_{\pmb\theta} \sum_{i=1}^n \ln{ P(\pmb{y}_{(i)} | X_{(i)} ; \pmb\theta) } \\
+    &= \max_{\pmb\theta} \sum_{i=1}^n \ln{( h_{\pmb{\theta}} (X_{(i)})^{y} (1 - h_{\pmb{\theta}}(X_{(i)}))^{(1-y)} )} \\ 
+    &= \max_{\pmb\theta} \sum_{i=1}^n (y\ln{(h_{\pmb{\theta}} (X_{(i)}))} + (1- \pmb{y}_{(i)})\ln{( 1 - h_{\pmb{\theta}} (X_{(i)}) )}) \\
+    \intertext{Given that $1 - S(x) = \frac{\exp{(-x)}}{1 + \exp{(-x)}} = \exp{(-x)} S(x)$} \\ 
+    &= \max_{\pmb\theta} \sum_{i=1}^n \left( \pmb{y}_{(i)} \ln ( h_{\pmb{\theta}} (X_{(i)}) ) +  (1-\pmb{y}_{(i)}) (-\pmb{\theta}^T X_{(i)} + \ln ( h_{\pmb{\theta}} (X_{(i)}) )) \right) \\ 
+    &= \max_{\pmb\theta} \sum_{i=1}^n \left( \pmb{y}_{(i)} \ln ( h_{\pmb{\theta}} (X_{(i)}) ) +  (-\pmb{\theta}^T X_{(i)} + \ln ( h_{\pmb{\theta}} (X_{(i)}) )) + (\pmb{\theta}^T X_{(i)} \pmb{y}_{(i)}  - \pmb{y}_{(i)} \ln ( h_{\pmb{\theta}} (X_{(i)}) )) \right) \\ 
+    &= \max_{\pmb\theta} \sum_{i=1}^n \left( \ln{( h_{\pmb{\theta}} (X_{(i)}) )} - (1-\pmb{y}_{(i)}) \pmb{\theta}^T X_{(i)} \right) \\ 
+    &= \min_{\pmb{\theta}} \sum_{i=1}^n \left( \ln( 1 + \exp{(-\pmb\theta^T X_{(i)})} ) + (1 - \pmb{y}_{(i)}) \pmb{\theta}^T X_{(i)} \right) \\ 
+    \intertext{The gradient of which is:} \\ 
+    &\quad \grad{\pmb{\theta}} \sum_{i=1}^n \left( \ln( 1 + \exp{(-\pmb\theta^T X_{(i)})} ) + (1 - \pmb{y}_{(i)}) \pmb{\theta}^T X_{(i)} \right)  \\ 
+    &= \sum_{i=1}^n \left( -\frac{1}{1 + \exp (\pmb\theta^T X_{(i)})} \circ X_{(i)} + (1-\pmb{y}_{(i)}) X_{(i)} \right) \\ 
+    &= \sum_{i=1}^n \left(1-\pmb{y}_{(i)} -\frac{1}{1 + \exp (\pmb\theta^T X_{(i)})} \right) \circ X_{(i)} \\ 
+    &= \sum_{i=1}^n \left(\frac{1}{1 + \exp (-\pmb\theta^T X_{(i)})} - \pmb{y}_{(i)} \right) \circ X_{(i)} \\ 
+    &= (h(X_{(i)}) - \pmb{y}_{(i)}) \circ X_{(i)}
+\end{align*}
+\subsection{Newton's Method}
+$$\pmb\theta := \pmb\theta - (\gradn{\pmb{\theta}}{2} l(\pmb{\theta}))^{-1} \grad{\pmb\theta} l(\pmb\theta)$$
+Newton's Method enjoys quadratic convergence, meaning that the error of the result will decrease quadratically. However, it is more expensive, both time and memory-wise, to calculate and invert Hessian in each iteration compared to gradient descent. For data with a large number of dimensions, using Newton's Method is problematic also because of proliferation of saddle points, which Newton's Method tends to attract to. \newpara
+Despite so, for linear models with mean-square loss, Newton's Method converges extremely fast. For a perfect square form loss function, Newton's Method converges in an exactly single iteration.
+
+\subsection{Generalized Linear Model}
+\subsubsection{Exponential Family Distribution}
+Exponential Family Distribution is a class of distributions parameterized by $\eta$:
+$$p(y;\eta) = b(y) \exp (\eta^T T(y) - a(\eta))$$\newline
+Both Bernoulli and Gaussian distribution are special cases of the exponential family distribution. For Bernoulli distribution, let's define:
+\begin{align*}
+    p(y;\phi) &= \phi^y (1 - \phi)^{(1-y)} \\ 
+    &= \exp{\left( y \ln \phi + (1-y) \ln (1 - \phi) ) \right)} \\ 
+    &= \exp{( y \ln \frac{\phi}{1 - \phi} + \ln(1 - \phi) )} \\ 
+    \intertext{In this case, we have:}
+    b(y) &= 1 \\
+    \eta &= \frac{\phi}{1 - \phi} \\
+    T(y) &= y \\  
+    a(\eta) &= -\ln (1 + \exp (\eta)) \\ 
+    p(y;\eta) &= \exp (\eta y - \ln (1 + \exp (\eta) ) ) \\
+    &= \frac{e^{\eta y}}{1 + e^\eta} = \text{sigmoid}(\eta) \cdot \exp (\eta (y-1))
+\end{align*}
+For Gaussian distribution, we define:
+\begin{align*}
+    p(y;\eta) &= b(y) \exp \left( \pmb\eta^T T(y) - a(\pmb\eta) \right) \\
+    p(y;(\mu, \sigma)) &= \frac{1}{\sqrt{2\pi\sigma^2}} \exp{\left( -\frac{(y - \mu)^2}{2\sigma^2} \right)} \\
+    &= \frac{1}{\sqrt{2\pi\sigma^2}} \exp{\left( \frac{2y\mu - y^2}{2\sigma^2} \right)} \exp{\left( -\frac{ \mu^2}{2\sigma^2} \right)} \\
+    &= \frac{1}{\sqrt{2\pi}} \sigma^{-1} \exp{\left( y \cdot \frac{\mu}{\sigma^2} - y^2 \frac{1}{2\sigma^2} -\frac{ \mu^2}{2\sigma^2} \right)} \\
+    &= \frac{1}{\sqrt{2\pi}}\exp{\left( y \cdot \frac{\mu}{\sigma^2} - y^2 \frac{1}{2\sigma^2} - \frac{ \mu^2}{2\sigma^2} - \ln \sigma \right)} \\
+    b(y) &= \frac{1}{\sqrt{2\pi}} \\ 
+    \pmb\eta &= \begin{bmatrix}
+        \displaystyle\frac{\mu}{\sigma^2} \\ 
+        \displaystyle -\frac{1}{2\sigma^2}
+    \end{bmatrix} \\
+    T(y) &= \begin{bmatrix}
+        x \\ 
+        x^2
+    \end{bmatrix} \\ 
+    a(\pmb\eta) &= \frac{ \mu^2}{2\sigma^2} + \ln \sigma = - \frac{\pmb{\eta}_{(1)}^2}{4 \pmb\eta_{(2)}} + \frac{1}{2} \ln \left| \frac{1}{2\pmb{\eta}_{(2)}} \right| \\ 
+    p(y; \pmb\eta) &= \frac{1}{\sqrt{2\pi}} \exp \left( \pmb\eta^T \begin{bmatrix} y \\ y^2 \end{bmatrix} + \frac{\pmb{\eta}_{(1)}^2}{4 \pmb\eta_{(2)}} - \frac{1}{2} \ln \left| \frac{1}{2\pmb{\eta}_{(2)}} \right| \right)
+\end{align*}
+\subsubsection{Generalized Linear Models}
+We make following assumptions to define GLMs: 
+\begin{enumerate}
+    \item $p(\pmb{y}_{(i)}|X_{(i)}; \pmb\theta) = \text{Exp}(\pmb\eta)$ 
+    \item $h(X_{(i)}) = \mathbb{E}[T(\pmb{y}_{(i)}) | X_{(i)}]$
+    \item $\eta = \pmb\theta^T X_{(i)}$ or $\pmb\eta_{(j)} = {\Theta_j}^T X_{(i)}$
+\end{enumerate}
+Using the parameters for Bernoulli distribution, we can see that: 
+\begin{align*}
+    h(X_{(i)}) &= p(\pmb{y}_{(i)} = 1 | X_{(i)}) \\ 
+    &= \text{sigmoid}(\eta) \\ 
+    &= \frac{1}{1 + \exp(\pmb\theta^T X_{(i)})} 
+\end{align*}
+and for the parameters of Gaussian distribution, the hypothesis is:
+\begin{align*}
+    h(X_{(i)}) &= \mathbb{E}[T(\pmb y_{(i)}) | X_{(i)}] \\ 
+    &= \mu \\ 
+    &= {\Theta_1}^T X_{(i)}
+\end{align*}
+\paragraph{Multinomial Distribution and Softmax Regression}
+Similar to Bernoulli distribution, multinomial distribution is used to represent the discrete probability distribution of a random variable $y \in {0,\dots,k}$:
+\begin{align*}
+    P(y=i) &= \begin{dcases} \phi_i, &i > 0 \\ 1 - \sum_{i=1}^{k} \phi_i, &i = 0 \end{dcases} \\ 
+    &= \left(1 - \sum_{i=1}^{k} \phi_i \right)^{\displaystyle 1\{y=0\}} \prod_{i=1}^{k} {\phi_i}^{\displaystyle 1\{y=i\}} 
+    \intertext{Given an identity matrix $I \in \mathcal{R}^{k\times k}$, we define $T(y)$ as:} \\ 
+    T(y) &= \begin{cases} 
+       I_y, &y > 0 \\ \pmb{0}, &y = 0 
+    \end{cases} \\ 
+    P(y=i) &= \left(1 - \sum_{i=1}^{k} \phi_i \right)^{\displaystyle (1 - \pmb{1}^T T(y))} \prod_{i=1}^{k} {\phi_i}^{\displaystyle T(y)_{(i)}} \\ 
+    &= \exp{\left( \left(1 - \pmb{1}^T T(y) \right) \ln \left( 1 - \sum_{i=1}^k \phi_i \right) + \sum_{i=1}^k T(y)_{(i)} \ln \phi_i \right)} \\ 
+    &= \exp{\left( \ln(1 - \pmb 1^T \pmb\phi) - (\ln(1 - \pmb 1^T \pmb\phi) \cdot \pmb 1)^T T(y) + T(y)^T \ln \pmb\phi \right)} \\
+    &= \exp{\left( T(y)^T \left( \ln \frac{\pmb\phi}{1 - \pmb 1^T \pmb\phi} \right)  - (- \ln (1 - \pmb 1^T \pmb\phi) ) \right)} \\
+    \intertext{so, if we define $\phi_0$ as $\phi_0 = 1 - \pmb 1^T \pmb\phi$:} 
+    b(y) &= 1 \\ 
+    \pmb\eta &= \ln \frac{\pmb\phi}{\phi_0} \\ 
+    a(\pmb\eta) &= - \ln(\phi_0) \\ 
+    \intertext{Using the fact that $\phi_0 + \pmb{1}^T \phi = 1$, we can derive the response function:}
+    \exp (\pmb \eta) &= \frac{\pmb\phi}{\phi_0} \\ 
+    \pmb 1^T \exp (\pmb \eta) &= \frac{\pmb 1^T \pmb\phi }{ \phi_0 } = \frac{1 - \phi_0}{\phi_0} \\ 
+    1 &= \phi_0 \pmb 1^T \exp(\pmb\eta) + \phi_0 \\
+    \phi_0 &= \frac{1}{1 + \pmb 1^T \exp(\pmb\eta)} \\ 
+    \pmb\phi &= \frac{ \exp(\pmb\eta) }{1 + \pmb 1^T \exp(\pmb\eta)} \\
+    a(\pmb \eta) &= \ln (1 + \pmb 1^T \exp(\pmb \eta)) \\ 
+    P(y; \pmb\eta) &= \exp \left( \pmb\eta^T T(y) - \ln (1 + \pmb 1^T \exp (\pmb\eta) ) \right) 
+    \intertext{Now we have paramterized it using $\pmb\eta$, we can find its expected value, which leads to the hypothesis for the corresponding GLM:} 
+    h(X_{(i)}) &= \mathbb{E}[T(\pmb y_{(i)}) | X_{(i)} ; \Theta] \\ 
+    &=\sum_{\pmb y_{(i)}=0}^k \ddfrac{ T(\pmb y_{(i)}) \exp (\pmb \eta^T T(\pmb y_{(i)}) )}{ 1 + \pmb 1^T \exp (\pmb\eta) } \\ 
+    &= \ddfrac{1}{ 1 + \pmb 1^T \exp (\pmb\eta) } \sum_{\pmb y_{(i)}=1}^k T(\pmb y_{(i)}) \exp (\pmb \eta^T T(\pmb y_{(i)}) ) \\
+    &= \ddfrac{1}{ 1 + \pmb 1^T \exp (\pmb\eta) } \sum_{\pmb y_{(i)}=1}^k T(\pmb y_{(i)}) \exp \left( \pmb\eta_{\displaystyle(\pmb y_{(i)})} \right) \\ 
+    &= \ddfrac{\exp (\pmb \eta) }{ 1 + \pmb 1^T \exp (\pmb\eta) } = \pmb{\phi} \\ 
+    &= \frac{ \exp ( \Theta^T X_{(i)} ) }{ 1 + \pmb 1^T \exp (\Theta^T X_{(i)}) } \\
+    &= \begin{bmatrix} \ddfrac{ \exp ({\Theta_1}^T X_{(i)}) }{1 + \sum_{j=1}^k \exp ({\Theta_j}^T X_{(i)}) } \\ \ddfrac{ \exp ({\Theta_2}^T X_{(i)}) }{1 + \sum_{j=1}^k \exp ({\Theta_j}^T X_{(i)}) } \\ \vdots \\ \ddfrac{ \exp ({\Theta_k}^T X_{(i)}) }{1 + \sum_{j=1}^k \exp ({\Theta_j}^T X_{(i)}) } \end{bmatrix}
+\end{align*}
+This model is called \textbf{Softmax Regression}, a generalization of logistic regression for multinomial distribution. Note that its parameter $\Theta$ is a $n \times k$ matrix. \newpara
+To fit the parameters, we need to find the maximum likelihood estimate:
+\begin{align*}
+    &\quad \max_{\Theta} \prod_{i=1}^m P(\pmb y_{(i)} | X_{(i)}; \Theta) \\
+    &= \max_{\Theta} \sum_{i=1}^m ( (\Theta^T X_{(i)})^T T(\pmb y_{(i)}) - \ln (1 + \pmb 1^T \exp (\Theta^T X_{(i)}))) = \max_\Theta -l(\Theta) \\ 
+    %&= \max_{\Theta} \sum_{i=1}^m \left( \Theta_{\displaystyle \pmb y_{(i)}}^T X_{(i)} -  \ln (1 + \pmb 1^T \exp (\Theta^T X_{(i)}) ) \right) \\ 
+    \grad{\Theta} l(\Theta) &= -\sum_{i=1}^m \grad{\Theta} \left( \tr \left( X_{(i)}^T \Theta \; T(\pmb y_{(i)}) \right) - \ln (1 + \pmb 1^T \exp (\Theta^T  X_{(i)}) )   \right) \\ 
+    &= -\sum_{i=1}^m \left( X_{(i)} T(\pmb y_{(i)})^T - \ddfrac{ X_{(i)} \exp (\Theta^T X_{(i)})^T }{1 + \pmb 1^T \exp(\Theta^T X_{(i)} )} \right) \\ 
+    &= \sum_{i=1}^m X_{(i)} \left(\ddfrac{ \exp (\Theta^T X_{(i)}) }{1 + \pmb 1^T \exp(\Theta^T X_{(i)} )} - T(\pmb y_{(i)}) \right)^T 
+\end{align*}
+Similar to logistic regression, there is no general closed form solution for softmax regression. Use either gradient descent or Newton's Method to maximize the joint probability.
+\section{Generative Learning Algorithms}
+All models/algorithms mentioned before in the last chapter are \textbf{discriminative learning algorithms}, which try to maximize the joint probability of $P(\pmb y | X; \eta)$. This chapter will introduce algorithms are \textbf{generative learning algorithms} that models $P(X | \pmb y)$ and $P(\pmb y)$ (called \textbf{prior}), then use \textbf{Bayes rule}:
+$$P(y|x) = \frac{P(x|y) P(y)}{P(x)}$$ 
+to derive the the distribution of $\pmb y$ given $X$.
+Here, $P(x)$ can be calculated by applying law of total probability: 
+$$P(x) = \int_{y} y P(x|y)$$
+
+\subsection{Multivariate Normal Distribution}
+A multivariate distribution a vector of random variables outputing values in an $n$-dimensional space. To describe variance of high-dimensional data, we define \textbf{covariance} as the average outer product of its deviation (from its average) with itself, that is:
+\begin{align*}
+    \text{Cov}(\pmb Z) &= \mathbb{E}[(\pmb Z - \mathbb{E}[\pmb Z])(\pmb Z - \mathbb{E}[\pmb Z])^T]
+    \intertext{ We can derive another form of the covariance:}
+    \text{Cov}(\pmb Z) &= \mathbb{E}[\pmb Z \pmb Z^T - \mathbb{E}[\pmb Z] \pmb Z^T - \pmb Z \mathbb{E}[\pmb Z]^T + \mathbb{E}[\pmb Z]\mathbb{E}[\pmb Z]^T] \\ 
+    &= \mathbb{E}[\pmb Z \pmb Z^T] - \mathbb{E}[\pmb Z] \mathbb{E}[\pmb Z]^T  - \mathbb{E}[\pmb Z] \mathbb{E}[\pmb Z]^T + \mathbb{E}[\pmb Z] \mathbb{E}[\pmb Z]^T \\ 
+    &= \mathbb{E}[\pmb Z \pmb Z^T] - \mathbb{E}[\pmb Z] \mathbb{E}[\pmb Z]^T
+\end{align*}
+Multivariate normal distribution is defined as following:
+\begin{align*}
+    P(\pmb y; \pmb\mu, \Sigma) &= \mathcal{N}(\pmb\mu, \Sigma) \\ 
+    &= \ddfrac{1}{(2\pi)^{n/2} |\Sigma|^{1/2}} \exp \left( -\frac{1}{2} (\pmb y - \pmb\mu)^T \Sigma^{-1} (\pmb y - \pmb\mu) \right)
+\end{align*}
+
+Multivariate normal distribution is an analogy of the single-variable counterpart in higher dimensional space. The probability density of $\pmb y$ is highest at mean vector $\pmb \mu$, decreases along a bell curve as $\pmb y$ moves away from the mean vector. We see the probability density of a value $\pmb y$ that is $d$ units away from $\pmb \mu$ along the unit vector $\pmb{\hat{u}}$ is:
+\begin{align*}
+	P(\pmb y = d\pmb{\hat{u}} + \pmb\mu; \pmb\mu, \Sigma) &= \mathcal{N}(\pmb\mu, \Sigma) \\ 
+	&= \ddfrac{1}{(2\pi)^{n/2} |\Sigma|^{1/2}} \exp \left( -\frac{1}{2} (d\pmb{\hat{u}})^T \Sigma^{-1} (d\pmb{\hat{u}}) \right) \\
+	&= \ddfrac{1}{(2\pi)^{n/2} |\Sigma|^{1/2}} \exp \left( -\frac{d^2}{2} \pmb{\hat{u}}^T \Sigma^{-1} \pmb{\hat{u}} \right)
+	\intertext{Since $\Sigma$ is symmetric and postive semi-definite by definition, there is $\Sigma = Q \Lambda Q^T$, where the column vectors of $Q$ are the eigenvectors of $\Sigma$ and $\Lambda$ is a diagonal matrix formed by the respective eigenvalues, all of which are greater or equal to $0$:}
+	&= \ddfrac{1}{(2\pi)^{n/2} |\Sigma|^{1/2}} \exp \left( -\frac{d^2}{2} \pmb{\hat{u}}^T Q \Lambda^{-1} Q^T \pmb{\hat{u}} \right) \\ 
+	&= \ddfrac{1}{(2\pi)^{n/2} |\Sigma|^{1/2}} \exp \left( -\frac{d^2}{2} \pmb{\hat{u}}^T Q \Lambda^{-1/2} \Lambda^{-1/2} Q^T \pmb{\hat{u}} \right)
+	\intertext{Note that since $\Lambda = \text{Diag}(\pmb\lambda)$, $\Lambda^{-1} = \text{Diag}(1/\pmb\lambda)$ and $\Lambda^{-1/2} = \text{Diag}(\pmb\lambda^{-1/2})$, so $\Lambda^{-1/2}$ is also a symmetric, positive semi-definite matrix:}
+	&= 
+\end{align*}
+\subsubsection{Gaussian Discriminant Analysis}
+\begin{align*}
+	y &\sim \text{Bernoulli}(\phi) \\
+	\pmb x| y=0 &\sim \mathcal{N}(\pmb\mu_0, \Sigma) \\ 
+	\pmb x| y=1 &\sim \mathcal{N}(\pmb\mu_1, \Sigma)
+\end{align*}
+(Negative) Joint Log Probability:
+\begin{align*}
+	l(\phi,\pmb\mu_0,\pmb\mu_1,\Sigma) &= -\ln \prod_{i=1}^m p(X_{(i)} | \pmb y_{(i)}; \pmb\mu_0,\pmb\mu_1,\Sigma) p(\pmb{y_{(i)}}; \phi) \\ 
+	&= -\ln \prod_{i=1}^m p(X_{(i)} | \pmb y_{(i)} = 1;  \pmb\mu_1, \Sigma)^{\displaystyle \pmb{y}_{(i)} } p(X_{(i)} | \pmb y_{(i)} = 0;  \pmb\mu_1, \Sigma)^{\displaystyle (1 - \pmb{y}_{(i)}) } p(\pmb{y_{(i)}}; \phi) \\ 
+	&= -\sum_{i=1}^m \left( -\frac{n}{2} \pmb y_{(i)} \ln 2\pi - \frac{1}{2} \pmb y_{(i)} \ln |\Sigma| - \pmb y_{(i)} \left(\frac{1}{2} (X_{(i)} - \pmb\mu_1)^T \Sigma^{-1} (X_{(i)} - \pmb\mu_1) \right) \right) \\
+	&\quad - \sum_{i=1}^m \left( -\frac{n}{2} (1 - \pmb y_{(i)}) \ln 2\pi - \frac{1}{2} (1 - \pmb y_{(i)}) \ln |\Sigma| - (1 - \pmb y_{(i)}) \left(\frac{1}{2} (X_{(i)} - \pmb\mu_0)^T \Sigma^{-1} (X_{(i)} - \pmb\mu_0) \right) \right) \\ 
+	&\quad - \sum_{i=1}^m \left( \pmb y_{(i)} \ln\phi + (1 - \pmb y_{(i)}) \ln(1 - \phi) \right) \\ 
+	&= \sum_{i=1}^m \Bigg( \frac{n}{2}\ln 2\pi + \frac{1}{2} \ln |\Sigma| + \pmb y_{(i)} \left(\frac{1}{2} (X_{(i)} - \pmb\mu_1)^T \Sigma^{-1} (X_{(i)} - \pmb\mu_1) \right) \\
+	&\qquad\qquad\qquad\qquad\qquad\quad\; + (1 - \pmb y_{(i)}) \left(\frac{1}{2} (X_{(i)} - \pmb\mu_0)^T \Sigma^{-1} (X_{(i)} - \pmb\mu_0) \right) \\ 
+	&\qquad\qquad\qquad\qquad\qquad\quad\; - \pmb y_{(i)} \ln\phi - (1 - \pmb y_{(i)}) \ln(1 - \phi) \Bigg) \\
+	&= \frac{mn}{2}\ln 2\pi + \frac{m}{2}\ln |\Sigma| + \frac{1}{2} \sum_{i=1}^m \pmb y_{(i)} { (X - \pmb 1 \pmb\mu_1^T)_{(i)} }^T \Sigma^{-1} (X - \pmb 1 \pmb\mu_1^T)_{(i)} \\ 
+	&\qquad\qquad\qquad\qquad\qquad\:\! +\frac{1}{2} \sum_{i=1}^m (1 - \pmb y)_{(i)} { (X - \pmb 1 \pmb\mu_0^T)_{(i)} }^T \Sigma^{-1} (X - \pmb 1 \pmb\mu_0^T)_{(i)} \\ 
+	&\qquad\qquad\qquad\qquad\qquad\:\! - \pmb 1^T (\pmb y\ln\phi + (1 - \pmb y)\ln(1 - \phi)) \\ 
+	&= \frac{mn}{2}\ln 2\pi + \frac{m}{2}\ln |\Sigma| + \frac{1}{2} \sum_{i=1}^m { ((X - \pmb 1 \pmb\mu_1^T)^T \text{Diag}(\pmb y)  )_i }^T (\Sigma^{-1} (X - \pmb 1 \pmb\mu_1^T)^T )_i \\ 
+	&\qquad\qquad\qquad\qquad\qquad\:\! +\frac{1}{2} \sum_{i=1}^m { ((X - \pmb 1 \pmb\mu_0^T)^T \text{Diag}(1 - \pmb y) )_i }^T (\Sigma^{-1} (X - \pmb 1 \pmb\mu_0^T)^T )_i \\ 
+	&\qquad\qquad\qquad\qquad\qquad\:\! - \pmb 1^T (\pmb y\ln\phi + (1 - \pmb y)\ln(1 - \phi)) \\ 
+	&= \frac{mn}{2}\ln 2\pi + \frac{m}{2}\ln |\Sigma| + \frac{1}{2}  \tr \text{Diag}(\pmb y) (X - \pmb 1 \pmb\mu_1^T) \Sigma^{-1} (X - \pmb 1\pmb\mu_1^T)^T \\ 
+	&\qquad\qquad\qquad\qquad\qquad\:\! +\frac{1}{2} \tr \text{Diag}(1 - \pmb y) (X - \pmb 1 \pmb\mu_0^T) \Sigma^{-1} (X - \pmb 1 \pmb\mu_0^T)^T  \\ 
+	&\qquad\qquad\qquad\qquad\qquad\:\! - \pmb 1^T (\pmb y\ln\phi + (1 - \pmb y)\ln(1 - \phi))
+\end{align*}
+Gradient with respect to parameters:
+\begin{align*}
+	\dif l(\phi,\pmb\mu_0,\pmb\mu_1,\Sigma) &= -\pmb 1^T \left(  \frac{\pmb y}{\phi} - \frac{1 - \pmb y}{1 - \phi} \right) \dif \phi \\
+	\pmb 1^T \pmb y (1 - \phi) &= \pmb 1^T (1 - \pmb y) \phi \\ 
+	\pmb 1^T (2\pmb y - 1)\phi &= \pmb 1^T \pmb y \\ 
+	\pmb 1^T \pmb y - \pmb 1^T \pmb y \phi &= \pmb 1^T \pmb 1 \phi - \pmb 1^T \pmb y \phi \\ 
+	\phi &= \frac{\pmb 1^T \pmb y}{\pmb 1^T \pmb 1} = \frac{1}{m}\sum_{i=1}^m \pmb 1\{\pmb y_{(i)} = 1 \} 
+	\intertext{Gradient with respect to $\pmb\mu_1$}
+	\dif l(\phi,\pmb\mu_0,\pmb\mu_1,\Sigma) &= \frac{1}{2} \dif\;  \tr \text{Diag}(\pmb y) (X - \pmb 1 \pmb\mu_1^T) \Sigma^{-1} (X - \pmb 1\pmb\mu_1^T)^T \\
+	&= \frac{1}{2} \tr \dif \left( \text{Diag}(\pmb y) \pmb 1 \pmb\mu_1^T \Sigma^{-1} \pmb\mu_1 \pmb 1^T -\text{Diag}(\pmb y) X \Sigma^{-1} \pmb\mu_1 \pmb 1^T -\text{Diag}(\pmb y) \pmb 1\pmb\mu_1^T \Sigma^{-1} X^T \right) \\ 
+	&= \frac{1}{2} \dif\left( \tr \pmb 1^T \text{Diag}(\pmb y) \pmb 1 \pmb\mu_1^T \Sigma^{-1} \pmb\mu_1 - \tr \pmb 1^T \text{Diag}(\pmb y) X \Sigma^{-1} \pmb\mu_1 - \tr \pmb\mu_1^T \Sigma^{-1} X^T \text{Diag}(\pmb y) \pmb 1 \right) \\ 
+	&= \frac{1}{2} \left( 2\;\tr \pmb 1^T \text{Diag}(\pmb y) \pmb 1 \pmb\mu_1^T \Sigma^{-1} \dif\pmb\mu_1 - \tr \pmb 1^T \text{Diag}(\pmb y) X \Sigma^{-1} \dif\pmb\mu_1 - \tr \pmb 1^T \text{Diag}(\pmb y) X \Sigma^{-1} \dif\pmb\mu_1 \right) \\ 
+	&= \tr \pmb 1^T \text{Diag}(\pmb y) \pmb 1 \pmb\mu_1^T \Sigma^{-1} \dif\pmb\mu_1 - \tr \pmb 1^T \text{Diag}(\pmb y) X \Sigma^{-1} \dif\pmb\mu_1 \\ 
+	&= \tr \pmb y^T ( \pmb 1 \pmb\mu_1^T - X ) \Sigma^{-1} \dif\pmb\mu_1 \\ 
+	\nabla_{\pmb\mu_1} l(\pmb\mu_1) &= \Sigma^{-1} ( \pmb 1 \pmb\mu_1^T - X )^T \pmb y 
+	\intertext{Since $\Sigma$ is not singular, (or we assume so), $( \pmb 1 \pmb\mu_1^T - X )^T \pmb y$ must be $0$ for the product to be $0$:}
+	( \pmb 1 \pmb\mu_1^T - X )^T \pmb y &= 0 \\ 
+	\pmb\mu_1 \pmb 1^T \pmb y &= X^T \pmb y \\ 
+	\pmb\mu_1 &= \frac{X^T \pmb y}{\pmb 1^T \pmb y} = \frac{\sum_{i=1}^m 1\{\pmb y_{(i)} = 1 \} X_{(i)}}{\sum_{i=1}^m 1\{\pmb y_{(i)} = 1\}}
+	\intertext{Via a similar process, the gradient with respect to $\pmb\mu_0$ is:}
+	\dif l(\phi,\pmb\mu_0,\pmb\mu_1,\Sigma) &= \tr (1 - \pmb y)^T (\pmb 1\pmb\mu_0^T - X) \Sigma^{-1} \dif\pmb\mu_0 \\ 
+	\nabla_{\pmb\mu_0} l(\pmb\mu_0) &= \Sigma^{-1} (\pmb 1\pmb\mu_0^T - X)^T (1 - \pmb y) \\ 
+	0 &= ( \pmb 1 \pmb\mu_1^T - X )^T (1 - \pmb y) \\ 
+	\pmb{\mu_0} &= \frac{X^T (1 - \pmb y)}{\pmb 1^T (1 - \pmb y)} = \frac{\sum_{i=1}^m 1\{\pmb y_{(i)} = 0 \} X_{(i)}}{\sum_{i=1}^m 1\{\pmb y_{(i)} = 0\}}
+	\intertext{Gradient with respect to $\Sigma$:}
+	\dif l(\phi,\pmb\mu_0,\pmb\mu_1,\Sigma) &= \frac{m}{2} \tr \Sigma^{-1} \dif\Sigma - \frac{1}{2} \tr \text{Diag}(\pmb y) (X - \pmb 1 \pmb\mu_1^T) \Sigma^{-1} (\dif\Sigma) \Sigma^{-1} (X - \pmb 1\pmb\mu_1^T)^T \\
+	&- \frac{1}{2} \tr \text{Diag}(1 - \pmb y) (X - \pmb 1 \pmb\mu_0^T) \Sigma^{-1} (\dif\Sigma) \Sigma^{-1} (X - \pmb 1 \pmb\mu_0^T)^T \\
+	&= \frac{m}{2} \tr \Sigma^{-1} \Sigma \Sigma^{-1} \dif\Sigma - \frac{1}{2} \tr \Sigma^{-1} (X - \pmb 1\pmb\mu_1^T)^T  \text{Diag}(\pmb y) (X - \pmb 1 \pmb\mu_1^T) \Sigma^{-1} \dif\Sigma \\
+	&- \frac{1}{2} \tr \Sigma^{-1} (X - \pmb 1 \pmb\mu_0^T)^T \text{Diag}(1 - \pmb y) (X - \pmb 1 \pmb\mu_0^T) \Sigma^{-1} \dif\Sigma \\
+	&= \tr \Sigma^{-1} \left( m\Sigma - (X - \pmb 1\pmb\mu_1^T)^T  \text{Diag}(\pmb y) (X - \pmb 1 \pmb\mu_1^T) - (X - \pmb 1 \pmb\mu_0^T)^T \text{Diag}(1 - \pmb y) (X - \pmb 1 \pmb\mu_0^T) \right) \Sigma^{-1} \dif\Sigma \\ 
+	\nabla_{\Sigma} l(\Sigma) &= \Sigma^{-1} \left(m\Sigma - (X - \pmb 1\pmb\mu_1^T)^T  \text{Diag}(\pmb y) (X - \pmb 1 \pmb\mu_1^T) - (X - \pmb 1 \pmb\mu_0^T)^T \text{Diag}(1 - \pmb y) (X - \pmb 1 \pmb\mu_0^T) \right) \Sigma^{-1} \\
+	\Sigma &= \frac{1}{m} \left( (X - \pmb 1\pmb\mu_1^T)^T  \text{Diag}(\pmb y) (X - \pmb 1 \pmb\mu_1^T) + (X - \pmb 1 \pmb\mu_0^T)^T \text{Diag}(1 - \pmb y) (X - \pmb 1 \pmb\mu_0^T) \right) \\ 
+	&= \frac{1}{m} (X - (\pmb y \pmb\mu_1^T + (1 - \pmb y) \pmb\mu_0^T)) (X - (\pmb y \pmb\mu_1^T + (1 - \pmb y) \pmb\mu_0^T))^T
+\end{align*}
+Gaussian discriminant analysis is a special case of logistic regression. It assumes a stronger assumption that the data is normally-distributed around the respective center of mass of the classes. When this assumption is right, the GDA is \textbf{asymptotically efficient}, which means there is no better algorithms that GDA in terms of accuracy given a set amount of training data. \newline
+However, when this assumption is not true, logistic regression finds its better fit, making it more robust when the distribution of the data is not well known.
+
+\subsection{Naive Bayes}
+\begin{align*}
+	y &\sim \text{Bernoulli}(\phi) \\
+	\pmb x_{(j)} | y=0 &\sim \text{Bernoulli}(\phi_{j|y=0}) \\
+	\pmb x_{(j)} | y=1 &\sim \text{Bernoulli}(\phi_{j|y=1})
+\end{align*}
+\textbf{Naive Bayes Assumption}: $\pmb x_{(j)}$'s are conditionally independent given $y$, i.e.
+$$p(\pmb x | y) = \prod_{j=1}^n p(\pmb x_{(j)} | y)$$
+
+Although Naive Bayes Assumption is almost never strictly true, the algorithm resulting from usually works well on many problems. Now let's maximize the joint probability of the model and gradients for our parameters:
+\begin{align*}
+	&\quad \min l(\phi, {\pmb\phi_0}^T = [\phi_{1|y=0} \dots \phi_{n|y=0}], {\pmb\phi_1}^T = [\phi_{1|y=1} \dots \phi_{n|y=1}]) \\ 
+	&= -\ln \prod_{i=1}^m p(X_{(i)} | \pmb y_{(i)}) p(\pmb y_{(i)}) \\
+	&= -\ln \prod_{i=1}^m \prod_{j=1}^n p(X_{ij} | \pmb y_{(i)}) \phi^{\pmb y_{(i)}} (1 - \phi)^{1 - \pmb y_{(i)}} \\
+	&= -\ln \prod_{i=1}^m \prod_{j=1}^n p(X_{ij} | \pmb y_{(i)} = 1)^{\pmb y_{(i)}} p(X_{ij} | \pmb y_{(i)} = 0)^{1 - \pmb y_{(i)}} \phi^{\pmb y_{(i)}} (1 - \phi)^{1 - \pmb y_{(i)}} \\
+	&= -\ln \prod_{i=1}^m \prod_{j=1}^n {\phi_{j|y=1}}^{\pmb y_{(i)} X_{ij}} (1 - \phi_{j|y=1})^{\pmb y_{(i)} (1 - X_{ij})} {\phi_{j|y=0}}^{(1 - \pmb y_{(i)}) X_{ij}} (1 - \phi_{j|y=0})^{(1 - \pmb y_{(i)}) (1 - X_{ij})} \phi^{\pmb y_{(i)}} (1 - \phi)^{1 - \pmb y_{(i)}} \\
+	&= -\sum_{i=1}^m \sum_{j=1}^n \left( \pmb y_{(i)} X_{ij} \ln \phi_{j|y=1} + \pmb y_{(i)} (1 - X_{ij}) \ln (1 - \phi_{j|y=1}) + (1 - \pmb y_{(i)}) X_{ij} \ln \phi_{j|y=0} + (1 - \pmb y_{(i)}) (1 - X_{ij}) \ln (1 - \phi_{j|y=0}) \right) \\
+	&\quad\quad - n \sum_{i=1}^m \left( \pmb y_{(i)}\ln\phi + (1 - \pmb y_{(i)})\ln (1 - \phi) \right) \\ 
+	&= -\sum_{i=1}^m \left( \pmb y_{(i)} {X_{(i)}}^T \ln \pmb\phi_1 + \pmb y_{(i)} (1 - X_{(i)})^T \ln(1 - \pmb\phi_1) + (1 - \pmb y_{(i)}) {X_{(i)}}^T \ln \pmb\phi_0 + (1 - \pmb y_{(i)}) (1 - X_{(i)})^T \ln(1 - \pmb\phi_0) \right) \\
+	&\quad - n (\pmb 1^T \pmb y \ln\phi + \pmb 1^T (1 - \pmb y) \ln(1 - \phi))\\
+	&= - \pmb y^T (X \ln\pmb\phi_1 - (1 - X) \ln (1 - \pmb\phi_1)) - (1 - \pmb y)^T (X \ln\pmb\phi_0 + (1 - X) \ln (1 - \pmb\phi_0))  - n (\pmb 1^T \pmb y \ln\phi + \pmb 1^T (1 - \pmb y) \ln(1 - \phi)) 
+	\intertext{Gradient:}
+	&\quad \dif l(\phi, \pmb\phi_0, \pmb\phi_1) \\
+	&= \pmb y^T \left(X \Diag\left(\frac{1}{\pmb\phi_1}\right) \dif\pmb\phi_1 - (1 - X) \Diag\left(\frac{1}{1 - \pmb\phi_1}\right) \dif\pmb\phi_1 \right) + (1 - \pmb y^T) \left(X \Diag\left(\frac{1}{\pmb\phi_0}\right) \dif\pmb\phi_0 - (1 - X) \Diag\left(\frac{1}{1 - \pmb\phi_0}\right) \dif\pmb\phi_0 \right) \\
+	&\qquad + n \left(\pmb 1^T \pmb y \frac{\dif\phi}{\phi} - \pmb 1^T (1 - \pmb y) \frac{\dif\phi}{1 - \phi} \right)
+\end{align*}
+\begin{align*}
+	\intertext{Solution for $\pmb\phi_1$:}
+	\Diag\left(\frac{1}{\pmb\phi_1}\right) X^T \pmb y &= \Diag \left( \frac{1}{1 - \pmb\phi_1} \right) (1 - X)^T \pmb y \\
+	\Diag\left(1 - \pmb\phi_1\right) X^T \pmb y&= \Diag \left( \pmb \phi_1 \right) (1 - X)^T \pmb y \\ 
+	X^T \pmb y &=  \Diag \left( \pmb\phi_1 \right) ( (1 - X)^T \pmb y + X^T \pmb y ) \\
+	X^T \pmb y &=  \pmb\phi_1 \circ ( {1_X}^T \pmb y ) = \pmb\phi_1 \pmb (1^T \pmb y) \\
+	\pmb\phi_1 &= \frac{X^T \pmb y}{\pmb 1^T \pmb y}
+	\intertext{Similarly:}
+	\pmb\phi_2 &= \frac{X^T (1 - \pmb y)}{\pmb1^T (1 - \pmb y)}
+	\intertext{For $\phi$, we have:}
+	\frac{\pmb 1^T \pmb y}{\phi} &= \frac{\pmb 1^T (1 - \pmb y)}{1 - \phi} \\
+	\pmb 1^T \pmb y - \pmb 1^T \pmb y\phi &= \pmb 1^T (1 - \pmb y) \phi \\
+	\pmb 1^T \pmb y &= \pmb 1^T \pmb 1_{\pmb y} \phi = m\phi \\
+	\phi &= \frac{\pmb 1^T \pmb y}{m} 
+\end{align*}
+\section{Support Vector Machine}
+\subsection{Preliminaries}
+\subsubsection{Lagrange Multiplier}
+Lagrange Multiplier is a method of finding critical points of a scalar-valued function subject to equality constraints, namely 
+\begin{align*}
+	\max_{\pmb x} f(\pmb x) \quad \text{given $g(\pmb x) = 0$} 
+	\intertext{or:}
+	\min_{\pmb x} f(\pmb x) \quad \text{given $g(\pmb x) = 0$} 
+\end{align*}
+Such critical points always lies on points where the contours of the two functions are parallel, and since the contour of function is always perpendicular to the gradient at any point, that means we need to find point $\pmb x'$ such that:
+\begin{align*}
+	\nabla_{\pmb x} f(\pmb x') &= \lambda \nabla_{\pmb x} g(\pmb x') \\
+	g(\pmb x') &= 0
+	\intertext{This can be cleverly written in term of the gradient of  \textbf{Lagrangian} being $0$:}
+	\mathcal L(\pmb x, \lambda) &= f(\pmb x) - \lambda g(\pmb x) \\
+	\nabla_{\pmb x} \mathcal L(\pmb x', \lambda) &= \begin{bmatrix}
+		\nabla_{\pmb x} f(\pmb x') - \lambda \nabla_{\pmb x} g(\pmb x') \\
+		g(\pmb x')
+	\end{bmatrix} = 0	
+\end{align*}
+The solutions can be maxima, minima, or saddles, but if $g(\pmb x) = 0$ contains a closed and bounded region, there has to be at least $2$ solutions, corresponding to its minimum and maximum.
+\subsubsection{Distance of a Point to a Hyperplane}
+Using Lagrange Multiplier, Let's calculate the distance of a point $\pmb x_0$ in to a hyperplane $\pmb\theta^T \pmb x + b = 0$
+$$\min_{\pmb x}\; \norm{\pmb x - \pmb x_0}^2 \\
+\text{given } \pmb\theta^T \pmb x + b = 0
+$$
+\begin{align*}
+	\mathcal{L}(\pmb x, \lambda) &= (\pmb x - \pmb x_0)^T (\pmb x - \pmb x_0) - \lambda (\pmb\theta^T \pmb x + b)\\
+	\nabla_{\pmb x, \lambda} \mathcal{L}(\pmb x, \lambda) &= \begin{bmatrix}
+		2(\pmb x - \pmb x_0) - \lambda \pmb\theta \\
+		- (\pmb\theta^T \pmb x + b)
+	\end{bmatrix} = 0 \\
+	\lambda \pmb\theta &= 2(\pmb x - \pmb x_0) \\
+	\lambda &= \frac{2\pmb\theta^T(\pmb x - \pmb x_0)}{\pmb\theta^T \pmb\theta} = \frac{-2(b + \pmb\theta^T\pmb x_0)}{\pmb\theta^T \pmb\theta} &\pmb\theta^T\pmb x = -b \\
+	\frac{\lambda \pmb\theta}{2} &= (\pmb x - \pmb x_0)\\
+	\frac{\lambda^2 \pmb\theta^T \pmb\theta}{4} &= (\pmb x - \pmb x_0)^T (\pmb x - \pmb x_0) \\
+	(\pmb x - \pmb x_0)^T (\pmb x - \pmb x_0) &= \frac{(\pmb \theta^T \pmb x_0 + b)^2}{\pmb\theta^T \pmb\theta} \\
+	\norm{\pmb x - \pmb x_0} &= \frac{|\pmb \theta^T \pmb x_0 + b|}{\norm{\pmb\theta}}
+\end{align*}
+\subsubsection{Lagrange duality}
+Given an optimization problem of following form:
+\begin{align*}
+	\min_{\pmb w}\quad &f(\pmb w)\\
+	\text{s.t.}\quad &\pmb g(\pmb w) \leq 0 \\
+	&\pmb h(\pmb w) = 0
+	\intertext{define its \textbf{generalized Lagrangian} to be:}
+	\mathcal{L}(\pmb w, \pmb\alpha, \pmb\beta) &= f(\pmb w) + \pmb\alpha^T \pmb g(\pmb w) + \pmb\beta^T \pmb h(\pmb w)
+	\intertext{Note that if we try to maximize the Lagrangian with the condition that $\pmb\alpha \geq 0$, it is only bounded if the constraints are satisfied, otherwise, that it is bounded, it maximize to $f(\pmb w)$, in other words, we have:}
+	\theta_\mathcal{P}(\pmb w) &= \max_{\pmb\alpha,\pmb\beta:\pmb a \geq 0} \mathcal{L}(\pmb w,\pmb\alpha,\pmb\beta) = \begin{cases}
+		f(\pmb w) &\pmb g(\pmb w) \leq 0 \wedge \pmb h(\pmb w) = 0 \\
+		\infty &\text{otherwise}
+	\end{cases} 
+	\intertext{Minimizing this problem is exactly same as minimizing $f(\pmb w)$ conforming to the given constraints, and this is what we call \textbf{primal problem}:}
+	\min_{\pmb w} \theta_\mathcal{P} (\pmb w) &= \min_{\pmb w} \max_{\pmb\alpha, \pmb\beta: \pmb a \geq 0} \mathcal{L}(\pmb w,\pmb\alpha,\pmb\beta)
+	\intertext{If we reverse the order of $\min$ and $\max$, we have the \textbf{dual problem}:} 
+	\max_{\pmb\alpha, \pmb\beta: \pmb a \geq 0} \theta_\mathcal{D}(\pmb w) &= \max_{\pmb\alpha, \pmb\beta: \pmb a \geq 0} \min_{\pmb w} \mathcal{L}(\pmb w, \pmb\alpha, \pmb\beta)
+	\intertext{Let $p*$ be the solution to the primal problem and $d*$ be the solution to the dual problem:}
+	d^* = \max_{\pmb\alpha, \pmb\beta: \pmb a \geq 0} \min_{\pmb w} \mathcal{L}(\pmb w, \pmb\alpha, \pmb\beta) &\leq \min_{\pmb w} \max_{\pmb\alpha, \pmb\beta: \pmb a \geq 0} \mathcal{L}(\pmb w, \pmb\alpha, \pmb\beta) = p^* \\ 
+	\max_{\pmb\alpha, \pmb\beta: \pmb a \geq 0} \min_{\pmb w} \left( f(\pmb w) + \pmb\alpha^T \pmb g(\pmb w) + \pmb\beta^T \pmb h(\pmb w) \right)
+	\intertext{This property is called weak duality, which holds for any continuous function $\mathcal L$. However when \textbf{Slater's condition} are met: }
+	&\text{$f$ and $\pmb g_{(i)}$ are convex for all $i$} \\ 
+	&\text{$\pmb h_{(i)}$ is affine for all $i$}\\
+	&\text{there exists $\pmb w$ such that $\pmb g_{(i)}(\pmb w) < 0$ for all $i$} \\
+	\intertext{then, \textbf{strong duality} holds, i.e:}
+	d* &= p*
+	\intertext{Another condition, that are both sufficient and necessary when strong duality hold is the \textbf{Karush-Kuhn-Tucker condtion}, formulated as following, given a feasible solution $\pmb w^*$:}
+	\nabla_{\pmb w} \mathcal{L}(\pmb w^*, \pmb\alpha, \pmb\beta) &= 0\\
+	\pmb\alpha \circ \pmb g(\pmb w^*) &= 0 \\
+	\pmb\alpha &\geq 0
+\end{align*}
+
+\subsection{Optimal Margin Classifier}
+Given a \textbf{linearly separable} dataset $(X_{(i)}, \pmb y_{(i)}) \in (\mathbb{R}^n, \{-1, 1\})$, let $\pmb\theta$ and $b$ define a hyperplane that properly separates this dataset. The hypothesis for this classifier is: 
+$$h_{\pmb\theta} (X_{(i)}) = \sign (\pmb\theta^T X_{(i)} + b)$$
+We define the \textbf{geometric margin} of the $i$th data point to be:
+$$\gamma_{i} = \frac{\pmb{y}_{(i)} (\pmb\theta^T X_{(i)} + b) }{\norm{\pmb\theta}}$$
+Note that margin for a particular data point is the distance of that data point to the separating hyperplane when the hypothesis matches its label, and the negative of that distance when the hypothesis mismatches. We can use this to denotes the confidence we have towards the hypothesis for this particular data point. For the entire dataset, we use the minimal margin in the dataset:
+$$\gamma = \min_{i=1,\dots,m} \frac{\pmb{y}_{(i)} (\pmb\theta^T X_{(i)} + b)}{\norm{\pmb\theta}} = \frac{1}{\norm{\pmb\theta}} \min_{i=1,\dots,m} \pmb{y}_{(i)} (\pmb\theta^T X_{(i)} + b) = \frac{\hat\gamma}{\norm{\pmb\theta}} $$
+To find the separating hyperplane, we maximize the margin for our dataset:
+\begin{align*}
+	\max_{\hat\gamma, \pmb\theta} &\frac{\hat{\gamma}}{\norm{\pmb\theta}} \\
+	\text{s.t.}\: &\pmb{y}_{(i)} (\pmb\theta^T X_{(i)} + b) \geq \hat{\gamma}
+\end{align*}
+Since our model is invariant to scaling, let's scale it down by $\hat\gamma$:
+\begin{align*}
+\max_{\hat\gamma, \pmb\theta} &\frac{1}{\norm{\pmb\theta}} \\
+\text{s.t.}\: &\pmb{y}_{(i)} (\pmb\theta^T X_{(i)} + b) \geq 1
+\end{align*}
+Then we change maximize $\norm{\pmb\theta}$ to minimize $\norm{\pmb\theta}^2$ to allow our model solved by quadratic programming:
+\begin{align*}
+\min_{\hat\gamma, \pmb\theta} &\frac{1}{2} \pmb\theta^T \pmb\theta \\
+\text{s.t.}\: &X\pmb\theta + b \leq -\pmb y 
+\end{align*}
+
+\subsubsection{Lagrange Dual Form}
+Let's write our primal in a more amenable form:
+\begin{align*}
+	\min\; &\frac{1}{2} \pmb\theta^T \pmb\theta \\
+	\text{s.t.}\; & 1 - (X \pmb\theta + b) \circ \pmb y \leq 0
+	\intertext{From the constraints of this problem, we can see that only $\pmb g(\pmb\theta)_{(i)} = 0$ only when $X_{(i)}$ is a support vector, so to satisfy $\pmb a \circ \pmb g(\pmb\theta) = 0$, $\pmb\alpha_{(i)}$ must be zero unless $X_{(i)}$ is a support vector.}
+	\intertext{The Lagrangian is:}
+	\mathcal L(\pmb\theta, \pmb\alpha) &= \frac{1}{2} \pmb\theta^T \pmb\theta + \pmb\alpha^T (1 - (X\pmb\theta + b) \circ \pmb y) \\
+	\nabla_{\pmb\theta} \mathcal L(\pmb\theta, \pmb\alpha) &= \pmb\theta - X^T \Diag(\pmb y) \pmb\alpha = 0 \\
+	\pmb\theta &= X^T \Diag(\pmb y) \pmb\alpha \\
+	\nabla_{b} \mathcal{L} (\pmb\theta, \pmb\alpha) &= \pmb y^T \pmb\alpha = 0
+	\intertext{Plugging the definition of $\pmb\theta$ to the Lagrangian, we have:}
+	\mathcal L(\pmb\alpha) &= \frac{1}{2} \pmb\alpha^T \Diag(\pmb y) X X^T \Diag(\pmb y) \pmb\alpha  + \pmb\alpha^T \pmb 1 - \pmb\alpha^T \Diag(\pmb y) X X^T \Diag(\pmb y) \pmb\alpha - (\pmb\alpha^T \pmb y) b \\
+	&= \pmb\alpha^T \pmb 1 - \frac{1}{2} (\pmb\alpha \circ \pmb y)^T X X^T (\pmb\alpha \circ \pmb y) 
+	\intertext{To find $\pmb\alpha^*$, maximize the dual problem:}
+	\max_{\pmb\alpha}\; &\left( \pmb\alpha^T \pmb 1 - \frac{1}{2} (\pmb\alpha \circ \pmb y)^T X X^T (\pmb\alpha \circ \pmb y) \right) \\
+	\text{s.t.}\; & \pmb\alpha \geq 0\\
+	& \pmb\alpha^T \pmb y = 0
+	\intertext{then calculate $\pmb\theta^*$ with:}
+	\pmb\theta^* &= X^T (\pmb y \circ \pmb\alpha) \\
+	\pmb b^* &= -\frac{\max_{i:y_{(i)} = -1} {\pmb\theta^*}^T X_{(i)} + \min_{i:y_{(i)} = 1} {\pmb\theta^*}^T X_{(i)}}{2}
+	\intertext{To exploit the fact that $\pmb\alpha$ is mostly zero, let $X_s$ denotes a matrix of support vectors (in rows), $\pmb y_s$ and $\pmb a_s$ denote corresponding label and $\pmb\alpha_{(i)}$, we have:}
+	X\pmb\theta &= X X^T (\pmb y \circ \pmb \alpha) \\
+	&= X {X_s}^T (\pmb y_s \circ \pmb \alpha_s)
+	\intertext{where $X {X_s}^T$ is called \textbf{kernel} of the SVM; as we will see later, we can change the kernel to classify linearly inseparable data.}
+\end{align*}
+\subsubsection{Kernel}
+	Kernels like $K(\pmb x, \pmb z)$ are functions that map its arguments to higher dimensions then calculating their inner products.
+	For example, define kernel $K$ as:
+	\begin{align*}
+		K(\pmb x, \pmb z) &= (\pmb x^T \pmb z + c)^2 \\
+		&= ((x_1 z_1)^2 + (x_2 z_2)^2 + (x_3 z_3)^2 + 2 x_1 z_1 x_2 z_2 + 2 x_1 z_1 x_3 z_3 + 2 x_2 z_2 x_3 z_3 + 2 x_1 z_1 c + 2 x_2 z_2 c + 2 x_3 z_3 c + c^2) \\
+		&= \pmb\phi(\pmb x)^T \pmb\phi(\pmb z) \\
+		\pmb\phi(\pmb x) &= \begin{bmatrix}
+			x_1^2 & x_2^2 & x_3^2 & \sqrt 2 x_1 x_2 & \sqrt 2 x_1 x_3 & \sqrt 2 x_2 x_3 & \sqrt{2c} x_1 & \sqrt{2c} x_2 & \sqrt{2c} x_3 & c
+		\end{bmatrix}^T
+	\end{align*}
+	Kernels with higher degrees like $K(\pmb x, \pmb z) = (\pmb x^T \pmb z + c)^d$ projects the features to an $\frac{(n+d)!}{n!d!}$ feature space, while keep $O(n)$ computational complexity. There is also \textbf{Gaussian kernel}, which: 
+	\begin{align*}
+		K(\pmb x, \pmb z) &= \exp \left( -\frac{\norm{\pmb x - \pmb z}^2}{2\sigma^2} \right)\\ 
+		&= 1  - \frac{\norm{\pmb x - \pmb z}^2}{2\sigma^2} + \frac{\norm{\pmb x - \pmb z}^4}{4\sigma^4} - \frac{\norm{\pmb x - \pmb z}^6}{8\sigma^6} + \dots 
+	\end{align*}
+	maps the features onto an infinite-dimensional feature space, as shown above.\newline
+	Each kernel $K(\pmb x, \pmb z)$ is also associated with a \textbf{kernel matrix} $K$, defined as such:
+	\begin{align*}
+		&K_{ij} = K(\pmb x_i, \pmb x_j) \\
+		&\text{given a list of vectors $\pmb x_1 \dots \pmb x_m \in \mathbb{R}^n$}
+	\end{align*}
+	We can show that $K$ is a symmetric, positive semi-definite matrix:
+	\begin{align*}
+		K_{ij} &= K(\pmb x_i, \pmb x_j) = \pmb\phi(\pmb x_i)^T \pmb\phi(\pmb x_j) = K(\pmb x_j, \pmb x_i) = K_{ji} \\
+		\intertext{To prove its definiteness, let's define $\pmb y_1 \dots \pmb y_n \in \mathbb{R}^m$ where $\pmb y_j$ contains the $j$th elements of $\pmb\phi(\pmb x_1) \dots \pmb\phi(\pmb x_m)$, for any vector $\pmb z \in \mathbb{R}^m$:}
+		\pmb z^T K \pmb z &= \pmb z^T \left( \sum_{i=1}^m \pmb y_{i} \pmb y_{i}^T \right) \pmb z = \sum_{i=1}^m \pmb z^T \pmb y_{i} \pmb y_{i}^T \pmb z = \sum_{i=1}^m (\pmb y_{i}^T \pmb z)^T  (\pmb y_{i}^T \pmb z ) \geq 0  
+		\intertext{Thus, a kernel matrix is always positive-semidefinite. Moreover, given a symmetric, positive semi-definite matrix, its corresponding kernel function is valid:}
+		\pmb z^T K \pmb z &= \sum_{j=1}^m \left( \pmb z_{(j)} \sum_{i=1}^m K(\pmb x_{i}, \pmb x_{j}) \pmb z_{(i)} \right) \\
+		&= \sum_{j=1}^m \sum_{i=1}^m \pmb z_{(j)} K(\pmb x_{i}, \pmb x_{j}) \pmb z_{(i)} \\
+		&= 
+	\end{align*}
+\subsubsection{Soft Margin Classifier}
+Not all data are linearly separable. Instead of requiring all data points to have $\pmb y \circ (X \pmb\theta + b) \geq 1$, we can relax this constraint by subtracting $\pmb\xi_{(i)}$ from each term while making such relaxations incur a penalty on the objective function by adding the sum of $\pmb\xi$:
+\begin{align*}
+	\min_{\pmb\theta, \pmb\xi}\; &\frac{1}{2} \pmb\theta^T \pmb\theta + C(\pmb 1^T \pmb\xi) \\
+	\text{s.t.}\; &\pmb y \circ (X \pmb\theta + b) \geq 1 - \pmb\xi \\
+	& \pmb\xi \geq 0
+\end{align*}
+Here $C$ controls the weight of penalty slack variable incurs. When $C$ is large, the classifier will behave more like an optimal margin classifier, ensuring most of the data points have a margin greater the "minimum" margin of the dataset. When $C$ is small, the classifier will optimize towards a larger margin, despite many of the data pointing probably having a margin less than the "minimum" margin.\newline\newline
+Let's rewrite the constraints of the problem to that of standard quadratic programming:
+\begin{align*}
+	\min_{\pmb\theta, \pmb\xi}\; &\frac{1}{2} \pmb\theta^T \pmb\theta + C(\pmb 1^T \pmb\xi) \\
+	\text{s.t.}\; &1 - \pmb\xi - \pmb y \circ (X \pmb\theta + b) \leq 0 \\
+	&-\pmb\xi \leq 0
+\end{align*}
+The dual program of this quadratic program can be derived, again, by differentiating its Lagrangian:
+\begin{align*}
+	\mathcal{L}(\pmb\theta, \pmb\xi, \pmb\alpha) &= \frac{1}{2} \pmb\theta^T \pmb\theta + C(\pmb 1^T \pmb\xi) + \pmb\alpha^T (1 - \pmb\xi - \Diag(\pmb y)X\pmb\theta - b\pmb y) - \pmb\gamma^T \pmb\xi \\
+	\intertext{where $\pmb\alpha$ and $\pmb\gamma$ are our Lagrange multipliers, since we have two constraints; now calcuate the gradients and set them to $0$:}
+	\nabla_{\pmb\theta} \mathcal{L}(\pmb\theta, \pmb\xi, \pmb\alpha) &= \pmb\theta - X^T \Diag(\pmb y) \pmb\alpha = 0 \\
+	\nabla_{b} \mathcal{L}(\pmb\theta, \pmb\xi, \pmb\alpha) &= - \pmb\alpha^T \pmb y = 0 \\ 
+	\nabla_{\pmb\xi} \mathcal{L}(\pmb\theta, \pmb\xi, \pmb\alpha) &= C \pmb 1 - \pmb\alpha - \pmb\gamma = 0 
+\end{align*}
+Since $b\pmb\alpha^T \pmb y = 0$ and $C(\pmb 1^T\pmb\xi) - \pmb\alpha^T \pmb\xi - \pmb\gamma^T\pmb\xi = 0$, we get the same solution for dual program objective:
+\begin{align*}
+	\max_{\pmb\alpha}\; &\pmb\alpha - \frac{1}{2} (\pmb\alpha \circ \pmb y)^T X X^T (\pmb\alpha \circ \pmb y)
+	\intertext{and since $\pmb\gamma = C - \pmb\alpha \geq 0$, we have constraints:}
+	\text{subject to}\; &\pmb\alpha^T \pmb y = 0 \\
+	&0 \leq \pmb\alpha \leq C
+\end{align*}
+The KKT dual-complementarity condition for the dual problem is:
+\begin{align*}
+	\pmb\alpha \circ (1 - \pmb\xi - \pmb y (X\pmb\theta + b)) &= 0 \\
+	\pmb\gamma \circ \pmb\xi &= 0
+	\intertext{We can make find cases to test if a data points conforms to these condition:}
+	\pmb\alpha_{(i)} = 0  &\implies 1 - \pmb\xi_{(i)} - (\pmb\theta^T X_{(i)} + b) \leq 0 \wedge \pmb\gamma_{(i)} = C > 0 \\
+	&\implies 1 - \pmb\xi_{(i)} - (\pmb\theta^T X_{(i)} + b) \leq 0 \wedge \pmb\xi_{(i)} = 0 \\
+	&\implies (\pmb\theta^T X_{(i)} + b) \geq 1 \\
+	0 < \pmb\alpha_{(i)} < C &\implies 1 - \pmb\xi_{(i)} - (\pmb\theta^T X_{(i)} + b) = 0 \wedge \pmb\gamma_{(i)} = C - \pmb\alpha_{(i)} > 0 \\
+	&\implies 1 - \pmb\xi_{(i)} - (\pmb\theta^T X_{(i)} + b) = 0 \wedge \pmb\xi_{(i)} = 0 \\
+	&\implies \pmb\theta^T X_{(i)} + b = 1 \\
+	\pmb\alpha_{(i)} = C &\implies 1 - \pmb\xi_{(i)} - (\pmb\theta^T X_{(i)} + b) = 0 \wedge \pmb\gamma_{(i)} = C - C = 0 \\
+	&\implies 1 - \pmb\xi_{(i)} - (\pmb\theta^T X_{(i)} + b) = 0 \wedge \pmb\xi_{(i)} \geq 0 \\
+	&\implies \pmb\theta^T X_{(i)} + b \leq 1
+\end{align*}
+
+\subsubsection{Sequential Minimal Optimization}
+
+
+\subsubsection{Multi-class SVM (Crammer and Singer)}
+Let's start with an linear multi-class classifier for a dataset of $S = \{ (X_{(1)}, \pmb y_{(1)}),\dots, (X_{(m)}, \pmb y_{(m)}) \}$ where $X \in \mathbb{R}^{m\times n}$ and $y \in \{1,\dots,k\}^m$:
+\begin{align*}
+	h_{M}(\pmb x) &= \arg\max_{r=1}^k {M_r}^T \pmb x 
+	\intertext{If we let $M$ be a $n$ by $r$ matrix with $M_r$ being its $r$th column, the result is just:}
+	\pmb h_{M}(\pmb x) &= \arg\max M^T \pmb x
+	\intertext{assuming $1$-based indexing and one-hot encoding, which represents $\pmb y$ as a $m$ by $k$ matrix $Y$ with each row $Y_{(i)}$ corresponding to the one-hot encoded vector of $\pmb y_{(i)}$. We can represent the margin $\pmb\gamma_{(r)}$ as:}
+	\pmb\gamma_{(r)} &= \min_{i=1}^m \frac{{M_r}^T X_{(i)}}{}
+\end{align*}
+\end{document}
