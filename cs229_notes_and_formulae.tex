@@ -565,7 +565,45 @@ The KKT dual-complementarity condition for the dual problem is:
 \end{align*}
 
 \subsubsection{Sequential Minimal Optimization}
-
+\text{Sequential Minimal Optimization (SMO)} is an algorithm that optimizes the dual program of SVM via \text{coordinate ascent}. Coordinate ascent optimizes a problem by optimizing each dimension of the variable sequentially, while fixing other dimensions during this process. It is an efficient algorithm for convex optimization provided the problem can be solved efficiently along each dimension. In the case SVM dual program, we optimize one \textbf{pair} of dimension a time to satisfy the constraint $\pmb\alpha^T \pmb y = 0$. For example, if we select $\pmb\alpha_{(p)}, \pmb\alpha_{(q)}$ to optimize, given the constraint $\pmb\alpha^T \pmb y = 0$, we have: \\
+\begin{align*}
+	\pmb\alpha_{(p)} \pmb y_{(p)} + \pmb\alpha_{(q)} \pmb y_{(q)} &= -\sum_{i=1;i\not\in \{p, q\}}^m \pmb\alpha_{(i)} \pmb y_{(i)} = C_1 \\
+	\pmb\alpha_{(q)} &= \frac{C_1 - \pmb\alpha_{(p)} \pmb y_{(p)}}{\pmb y_{(q)}} = \pmb y_{(q)} (C_1 - \pmb\alpha_{(p)} \pmb y_{(p)}) &\pmb y \in \{-1, 1\}^m
+\end{align*}
+Plugging in this formula for $\pmb\alpha_{(q)}$ and treating other variables as constants, our dual program becomes:
+\begin{align*}
+	\max_{\pmb\alpha_{(p)}} \pmb\alpha_{(p)} + \pmb y_{(q)} (C_1 - \pmb\alpha_{(p)} \pmb y_{(p)}) - \sum_{j=1}^m M(p, j) - \sum_{j=1}^m M(q, j) - \sum_{i=1}^m M(i, p) - \sum_{i=1}^m M(i, q) + M(q, p) + M(p, q) + M(p, p) + M(q, q) + C_2
+\end{align*}
+where $M(i, j) = \pmb y_{(i)} \pmb y_{(j)} \pmb\alpha_{(i)} \pmb\alpha_{(j)} K(X_{(i)}, X_{(j)})$.
+Since $M(i,j) = M(j, i)$, this is equivalent to following:
+\begin{align*}
+	&\max_{\pmb\alpha_{(p)}} \pmb\alpha_{(p)} + \pmb y_{(q)} (C_1 - \pmb\alpha_{(p)} \pmb y_{(p)}) - 2\sum_{j=1}^m M(p, j) - 2\sum_{j=1}^m M(q, j) + 2M(p, q) + M(p, p) + M(q, q) + C_2 \\
+	\iff &\max_{\pmb\alpha_{(p)}} \pmb\alpha_{(p)} + \pmb y_{(q)} (C_1 - \pmb\alpha_{(p)} \pmb y_{(p)}) - M(p, p) - 2M(p, q) - 2\sum_{j=1;j\not\in\{p, q\}}^m M(p, j) - M(q, q) - 2\sum_{j=1;j\not\in\{p, q\}}^m M(q, j) + C_2 
+\end{align*}
+This is a one dimensional quadratic function, just make its derivative $0$ to maximize it:
+\begin{align*}
+	&\frac{\dif}{\dif \pmb\alpha_{(p)}} \left( \pmb\alpha_{(p)} + \pmb y_{(q)} (C_1 - \pmb\alpha_{(p)} \pmb y_{(p)}) - M(p, p) - 2M(p, q) - 2\sum_{j=1;j\not\in\{p, q\}}^m M(p, j) - M(q, q) - 2\sum_{j=1;j\not\in\{p, q\}}^m M(q, j) + C_2 \right) \\
+	= &1 - \pmb y_{(p)} \pmb y_{(q)} - \frac{\dif M(p, p)}{\dif \pmb\alpha_{(p)}} + 2 \frac{\dif M(p, q)}{\dif \pmb\alpha_{(p)}} + \frac{\dif M(q, q)}{\dif \pmb\alpha_{(p)}} +  2\sum_{j=1; j \not\in \{p, q\}}^m \frac{\dif M(p, j)}{\dif \pmb\alpha_{(p)}} + 2\sum_{j=1; j \not\in \{p, q\}}^m \frac{\dif M(q, j)}{\dif \pmb\alpha_{(p)}}
+	\intertext{where we have:
+		\begin{align*}
+			\qquad \frac{\dif M(p, p)}{\dif \pmb\alpha_{(p)}} &= 2 \pmb y_{(p)}^2 \pmb\alpha_{(p)} K(X_{(p)}, X_{(p)}) = 2 \pmb\alpha_{(p)} K(X_{(p)}, X_{(p)}) \\
+			\qquad \frac{\dif M(p, q)}{\dif \pmb\alpha_{(p)}} &= \pmb y_{(p)} (\pmb y_{(q)}^2 (C_1 - \pmb\alpha_{(p)} \pmb y_{(p)})) K(X_{(p)}, X_{(q)}) - (\pmb y_{(q)} \pmb y_{(p)}) \pmb y_{(p)} \pmb  y_{(q)} \pmb\alpha_{(p)} K(X_{(p)}, X_{(q)}) \\
+			&= \pmb y_{(p)} C_1 K(X_{(p)}, X_{(q)}) - \pmb y_{(p)}^2 \pmb\alpha_{(p)} K(X_{(p)}, X_{(q)}) - \pmb y_{(q)}^2 \pmb y_{(p)}^2 \pmb\alpha_{(p)} K(X_{(p)}, X_{(q)}) \\
+			&= \pmb y_{(p)} C_1 K(X_{(p)}, X_{(q)}) - \pmb\alpha_{(p)} K(X_{(p)}, X_{(q)}) -  \pmb\alpha_{(p)} K(X_{(p)}, X_{(q)}) \\
+			&= (\pmb y_{(p)} C_1 - 2\pmb\alpha_{(p)}) K(X_{(p)}, X_{(q)}) \\
+			\qquad \frac{\dif M(q, q)}{\dif \pmb\alpha_{(p)}} &= -2 \pmb y_{(q)} (C_1 - \pmb\alpha_{(p)} \pmb y_{(p)}) K(X_{(q)}, X_{(q)}) \pmb y_{(q)} \pmb y_{(p)} = -2 (C_1 - \pmb\alpha_{(p)} \pmb y_{(p)}) K(X_{(q)}, X_{(q)}) \pmb y_{(p)} \\
+			&= 2 \pmb\alpha_{(p)} K(X_{(q)}, X_{(q)}) - 2 C_1 K(X_{(q)}, X_{(q)}) \pmb y_{(p)} \\
+			&= 2 K(X_{(q)}, X_{(q)}) (\pmb\alpha_{(p)} - C_1 \pmb y_{(p)}) \\
+			\qquad \frac{\dif M(p, j)}{\dif \pmb\alpha_{(p)}} &= \pmb y_{(p)} \pmb y_{(j)} \pmb\alpha_{(j)} K(X_{(p)}, X_{(j)}) \\
+			\qquad \frac{\dif M(q, j)}{\dif \pmb\alpha_{(p)}} &= -\pmb y_{(q)} \pmb y_{(j)} \pmb\alpha_{(j)} K(X_{(q)}, X_{(j)})
+		\end{align*}
+		Plugging these derivatives in, we have:
+	}
+	= &1 - \pmb y_{(p)} \pmb y_{(q)} - 2 \pmb\alpha_{(p)} K(X_{(p)}, X_{(p)}) - 2 (\pmb y_{(p)} C_1 - 2\pmb\alpha_{(p)}) K(X_{(p)}, X_{(q)}) - 2 K(X_{(q)}, X_{(q)}) (\pmb\alpha_{(p)} - C_1 \pmb y_{(p)}) \\
+	- &2 \sum_{j=1; j \not\in \{p, q\}}^m \pmb y_{(p)} \pmb y_{(j)} \pmb\alpha_{(j)} K(X_{(p)}, X_{(j)}) - 2 \sum_{j=1; j \not\in \{p, q\}}^m \pmb y_{(q)} \pmb y_{(j)} \pmb\alpha_{(j)} K(X_{(q)}, X_{(j)}) = 0 \\
+	&(K(X_{(p)}, X_{(q)}) - 2 K(X_{(p)}, X_{(p)}) - K(X_{(q)}, X_{(q)})) \pmb\alpha_{(p)} \\
+	= & \sum_{j=1; j \not\in \{p, q\}}^m \pmb y_{(j)} \pmb\alpha_{(j)} (\pmb y_{(p)} K(X_{(p)}, X_{(j)}) - \pmb y_{(q)} K(X_{(q)}, X_{(j)})) - \frac{1 - \pmb y_{(p)} \pmb y_{(q)}}{2} + \pmb y_{(p)} C_1 K(X_{(p)}, X_{(q)}) - 2 K(X_{(q)}, X_{(q)}) C_1 \pmb y_{(p)}
+\end{align*}
 
 \subsubsection{Multi-class SVM (Crammer and Singer)}
 Let's start with an linear multi-class classifier for a dataset of $S = \{ (X_{(1)}, \pmb y_{(1)}),\dots, (X_{(m)}, \pmb y_{(m)}) \}$ where $X \in \mathbb{R}^{m\times n}$ and $y \in \{1,\dots,k\}^m$:
